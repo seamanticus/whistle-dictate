@@ -1,0 +1,30 @@
+#!/bin/sh
+# Dictation on a key: the first run records from the default PipeWire source
+# and types what is said into the focused window; the next run stops it.
+# Arguments go to whistle-dictate, e.g. --language en.
+set -eu
+
+pidfile="${XDG_RUNTIME_DIR:?XDG_RUNTIME_DIR is not set}/whistle-dictate.pid"
+
+# Stopping ends only the recorder: whistle-dictate reads end of input, commits
+# the words still pending, and the last line is typed before the session ends.
+# The comm check keeps a stale pidfile from signalling a reused pid.
+if pid=$(cat "$pidfile" 2>/dev/null) &&
+    [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = pw-record ]; then
+    kill -TERM "$pid"
+    exit 0
+fi
+
+# SIGTERM, not SIGINT: a background job of a non-interactive shell ignores SIGINT.
+{
+    pw-record --rate 16000 --channels 1 --format f32 --raw - &
+    echo "$!" >"$pidfile"
+    wait "$!"
+} | whistle-dictate "$@" | {
+    sep=
+    while IFS= read -r piece; do
+        wtype -- "$sep$piece"
+        sep=' '
+    done
+}
+rm -f "$pidfile"

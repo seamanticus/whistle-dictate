@@ -1,0 +1,12 @@
+# build outputs
+/whistle-dictate
+*.o
+/vendor/
+
+# makepkg
+/src/
+/pkg/
+*.pkg.tar.*
+/libneedle-*.a
+/needle-*.h
+/whistle-*.cact
